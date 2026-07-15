@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="description" content="Painel de análise técnica e simulação para uso em tablet." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <title>Robô Agressivo — Tablet</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#111827;
+      --panel2:#182235;
+      --text:#f8fafc;
+      --muted:#94a3b8;
+      --ok:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --line:#263246;
+      --accent:#3b82f6;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:linear-gradient(180deg,#07101e,#0b1220 40%,#0f172a);
+      color:var(--text);
+      min-height:100vh;
+    }
+    header{
+      position:sticky;top:0;z-index:10;
+      backdrop-filter:blur(14px);
+      background:rgba(11,18,32,.88);
+      border-bottom:1px solid var(--line);
+      padding:14px 18px;
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+    }
+    h1{font-size:1.15rem;margin:0}
+    .status{font-size:.78rem;color:var(--muted)}
+    main{padding:16px;max-width:1200px;margin:auto}
+    .notice{
+      background:rgba(245,158,11,.12);
+      border:1px solid rgba(245,158,11,.35);
+      color:#fde68a;padding:12px 14px;border-radius:14px;margin-bottom:14px;font-size:.9rem
+    }
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .card{
+      background:linear-gradient(180deg,var(--panel),var(--panel2));
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:0 12px 30px rgba(0,0,0,.18)
+    }
+    .span-12{grid-column:span 12}
+    .span-8{grid-column:span 8}
+    .span-6{grid-column:span 6}
+    .span-4{grid-column:span 4}
+    .span-3{grid-column:span 3}
+    .metric{font-size:1.5rem;font-weight:700;margin-top:6px}
+    .label{color:var(--muted);font-size:.8rem}
+    .signal{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      min-height:108px
+    }
+    .signal strong{font-size:2rem}
+    .call{color:var(--ok)}
+    .put{color:var(--bad)}
+    .no{color:var(--warn)}
+    label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 6px}
+    input,select,button{
+      width:100%;border-radius:12px;border:1px solid var(--line);
+      background:#0d1626;color:var(--text);padding:12px;font-size:1rem
+    }
+    button{
+      background:linear-gradient(180deg,#2563eb,#1d4ed8);
+      border:none;font-weight:700;cursor:pointer;margin-top:12px
+    }
+    button.secondary{background:#1f2937;border:1px solid var(--line)}
+    button.danger{background:#7f1d1d}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    table{width:100%;border-collapse:collapse;font-size:.84rem}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left}
+    th{color:var(--muted);font-weight:600}
+    .pill{padding:4px 8px;border-radius:999px;font-size:.72rem;font-weight:700;display:inline-block}
+    .pill.green{background:rgba(34,197,94,.16);color:#86efac}
+    .pill.red{background:rgba(239,68,68,.16);color:#fca5a5}
+    .pill.draw{background:rgba(148,163,184,.16);color:#cbd5e1}
+    canvas{width:100%;height:230px;background:#0b1322;border-radius:14px;border:1px solid var(--line)}
+    footer{padding:24px 16px;color:var(--muted);font-size:.78rem;text-align:center}
+    @media(max-width:850px){
+      .span-8,.span-6,.span-4,.span-3{grid-column:span 12}
+      .row{grid-template-columns:1fr}
+      .signal strong{font-size:1.7rem}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Robô Agressivo — Tablet</h1>
+    <div class="status" id="installStatus">Aplicativo local de análise e simulação</div>
+  </div>
+  <div class="status" id="clock"></div>
+</header>
+
+<main>
+  <div class="notice">
+    Este aplicativo não acessa sua conta, não solicita senha e não executa ordens. Os sinais são demonstrativos e devem ser validados em conta demo.
+  </div>
+
+  <section class="grid">
+    <div class="card span-3"><div class="label">Banca atual</div><div class="metric" id="bankMetric">R$ 1.000,00</div></div>
+    <div class="card span-3"><div class="label">Operações</div><div class="metric" id="opsMetric">0</div></div>
+    <div class="card span-3"><div class="label">Assertividade</div><div class="metric" id="winMetric">0,00%</div></div>
+    <div class="card span-3"><div class="label">Resultado</div><div class="metric" id="resultMetric">R$ 0,00</div></div>
+
+    <div class="card span-8">
+      <div class="signal">
+        <div>
+          <div class="label">Sinal atual</div>
+          <strong id="signalText" class="no">NÃO OPERAR</strong>
+          <div class="status" id="signalReason">Aguardando análise</div>
+        </div>
+        <div style="text-align:right">
+          <div class="label">Pontuação</div>
+          <div class="metric" id="scoreText">0/100</div>
+        </div>
+      </div>
+      <canvas id="chart" width="900" height="260"></canvas>
+      <button id="analyzeBtn">Gerar nova análise demonstrativa</button>
+    </div>
+
+    <div class="card span-4">
+      <h3 style="margin-top:0">Configuração</h3>
+      <label>Ativo</label>
+      <select id="asset">
+        <option>EUR/USD</option>
+        <option>GBP/USD</option>
+        <option>USD/JPY</option>
+        <option>BTC/USD</option>
+        <option>ETH/USD</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Banca inicial</label>
+          <input id="initialBank" type="number" min="100" step="100" value="1000">
+        </div>
+        <div>
+          <label>Stake (%)</label>
+          <input id="stakePct" type="number" min="0.1" max="2" step="0.1" value="0.5">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Payout (%)</label>
+          <input id="payout" type="number" min="60" max="95" step="1" value="80">
+        </div>
+        <div>
+          <label>Pontuação mínima</label>
+          <input id="minScore" type="number" min="50" max="95" step="1" value="68">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Stop diário (%)</label>
+          <input id="stopLoss" type="number" min="1" max="10" step="0.5" value="5">
+        </div>
+        <div>
+          <label>Máx. perdas seguidas</label>
+          <input id="maxLosses" type="number" min="2" max="10" step="1" value="4">
+        </div>
+      </div>
+
+      <button class="secondary" id="saveBtn">Salvar configuração</button>
+      <button class="danger" id="resetBtn">Zerar histórico</button>
+    </div>
+
+    <div class="card span-12">
+      <h3 style="margin-top:0">Registrar resultado da operação</h3>
+      <div class="row">
+        <button id="greenBtn" style="background:#166534">GREEN</button>
+        <button id="redBtn" style="background:#991b1b">RED</button>
+      </div>
+      <button class="secondary" id="drawBtn">EMPATE / CANCELADA</button>
+    </div>
+
+    <div class="card span-12">
+      <h3 style="margin-top:0">Histórico</h3>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th><th>Ativo</th><th>Sinal</th><th>Score</th><th>Stake</th><th>Resultado</th><th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Uso educacional e experimental. Resultados passados não garantem resultados futuros.
+</footer>
+
+<script>
+const state = {
+  bank: 1000,
+  initialBank: 1000,
+  operations: [],
+  currentSignal: { type: "NO_TRADE", score: 0, reason: "Aguardando análise" },
+  lossStreak: 0
+};
+
+const $ = id => document.getElementById(id);
+const money = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const pct = v => v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
+
+function load(){
+  const saved = localStorage.getItem("roboTabletState");
+  if(saved){
+    Object.assign(state, JSON.parse(saved));
+    $("initialBank").value = state.initialBank;
+  }
+  const cfg = JSON.parse(localStorage.getItem("roboTabletConfig") || "{}");
+  Object.entries(cfg).forEach(([k,v]) => { if($(k)) $(k).value = v; });
+  render();
+  drawChart();
+}
+
+function save(){
+  localStorage.setItem("roboTabletState", JSON.stringify(state));
+}
+
+function render(){
+  $("bankMetric").textContent = money(state.bank);
+  $("opsMetric").textContent = state.operations.length;
+  const decisive = state.operations.filter(o => o.result==="GREEN" || o.result==="RED");
+  const wins = decisive.filter(o => o.result==="GREEN").length;
+  $("winMetric").textContent = pct(decisive.length ? wins/decisive.length*100 : 0);
+  $("resultMetric").textContent = money(state.bank-state.initialBank);
+
+  const s = state.currentSignal;
+  $("signalText").textContent = s.type==="NO_TRADE" ? "NÃO OPERAR" : s.type;
+  $("signalText").className = s.type==="CALL" ? "call" : s.type==="PUT" ? "put" : "no";
+  $("scoreText").textContent = `${s.score}/100`;
+  $("signalReason").textContent = s.reason;
+
+  $("historyBody").innerHTML = state.operations.slice().reverse().map(o => `
+    <tr>
+      <td>${o.time}</td>
+      <td>${o.asset}</td>
+      <td>${o.signal}</td>
+      <td>${o.score}</td>
+      <td>${money(o.stake)}</td>
+      <td><span class="pill ${o.result==="GREEN"?"green":o.result==="RED"?"red":"draw"}">${o.result}</span></td>
+      <td>${money(o.bank)}</td>
+    </tr>`).join("");
+}
+
+function analyze(){
+  const min = Number($("minScore").value);
+  const trend = Math.random();
+  const momentum = Math.random();
+  const volatility = Math.random();
+  let score = Math.round(48 + trend*22 + momentum*18 + volatility*12);
+  let type = "NO_TRADE";
+  let reason = "Filtros insuficientes ou conflito entre indicadores.";
+
+  if(score >= min){
+    type = trend >= .5 ? "CALL" : "PUT";
+    reason = type==="CALL"
+      ? "Tendência de alta, momentum positivo e volatilidade aceitável."
+      : "Tendência de baixa, pressão vendedora e volatilidade aceitável.";
+  }
+  state.currentSignal = {type,score,reason};
+  save(); render(); drawChart();
+}
+
+function registerResult(result){
+  const cfgStake = Number($("stakePct").value)/100;
+  const payout = Number($("payout").value)/100;
+  const stopLoss = Number($("stopLoss").value)/100;
+  const maxLosses = Number($("maxLosses").value);
+
+  if(state.currentSignal.type==="NO_TRADE"){
+    alert("Gere um sinal CALL ou PUT antes de registrar uma operação.");
+    return;
+  }
+  if(state.bank <= state.initialBank*(1-stopLoss)){
+    alert("Stop diário atingido. O aplicativo bloqueou novas operações.");
+    return;
+  }
+  if(state.lossStreak >= maxLosses){
+    alert("Limite de perdas consecutivas atingido.");
+    return;
+  }
+
+  const stake = Math.max(1, state.bank*cfgStake);
+  if(result==="GREEN"){ state.bank += stake*payout; state.lossStreak = 0; }
+  if(result==="RED"){ state.bank -= stake; state.lossStreak += 1; }
+
+  state.operations.push({
+    time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}),
+    asset:$("asset").value,
+    signal:state.currentSignal.type,
+    score:state.currentSignal.score,
+    stake,
+    result,
+    bank:state.bank
+  });
+  save(); render(); drawChart();
+}
+
+function drawChart(){
+  const canvas = $("chart");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#0b1322"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const points = [];
+  let p = 100;
+  for(let i=0;i<70;i++){ p += (Math.random()-.48)*2.2; points.push(p); }
+  const min=Math.min(...points), max=Math.max(...points);
+  ctx.strokeStyle="#3b82f6"; ctx.lineWidth=3; ctx.beginPath();
+  points.forEach((v,i)=>{
+    const x=i*(canvas.width/(points.length-1));
+    const y=canvas.height-20-(v-min)/(max-min||1)*(canvas.height-40);
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
+}
+
+$("analyzeBtn").onclick=analyze;
+$("greenBtn").onclick=()=>registerResult("GREEN");
+$("redBtn").onclick=()=>registerResult("RED");
+$("drawBtn").onclick=()=>registerResult("DRAW");
+$("saveBtn").onclick=()=>{
+  const keys=["asset","initialBank","stakePct","payout","minScore","stopLoss","maxLosses"];
+  const cfg={}; keys.forEach(k=>cfg[k]=$(k).value);
+  localStorage.setItem("roboTabletConfig",JSON.stringify(cfg));
+  state.initialBank=Number($("initialBank").value);
+  if(!state.operations.length) state.bank=state.initialBank;
+  save(); render(); alert("Configuração salva.");
+};
+$("resetBtn").onclick=()=>{
+  if(confirm("Apagar todo o histórico e reiniciar a banca?")){
+    state.initialBank=Number($("initialBank").value);
+    state.bank=state.initialBank;
+    state.operations=[];
+    state.lossStreak=0;
+    state.currentSignal={type:"NO_TRADE",score:0,reason:"Aguardando análise"};
+    save(); render(); drawChart();
+  }
+};
+
+setInterval(()=>$("clock").textContent=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}),1000);
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+load();
+</script>
+</body>
+</html>
